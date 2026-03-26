@@ -184,7 +184,7 @@ metricInfo = model.fit(
     epochs=120,
     batch_size=64,
     validation_split=0.2,
-    callbacks=[lr_scheduler, early_stop],
+    # callbacks=[lr_scheduler, early_stop],
     class_weight=class_weights
 )
 
@@ -270,3 +270,4 @@ t = 1
 while os.path.exists(f"models/model_{t}.keras"):
     t += 1
 model.save(f"models/model_{t}.keras")
+

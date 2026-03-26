@@ -124,50 +124,80 @@ for i, idx in enumerate(selected_indices):
 plt.suptitle("Sample images from the testing dataset")
 plt.show()
 
+# MODEL CHECK (LOAD IF EXISTS)
+
+os.makedirs("models", exist_ok=True)
+os.makedirs("models2", exist_ok=True)
+
+model_path = "models/model_4.keras"
+
+if os.path.exists(model_path):
+    print(f"\n Found existing model at {model_path}. Loading for fine-tuning...\n")
+    model = tf.keras.models.load_model(model_path)
+
+    # Recompile for continued training (lower LR)
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0005),
+        loss='sparse_categorical_crossentropy',
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()]
+    )
+
+    loaded_existing_model = True
+else:
+    print(f"\n No existing model found. Training from scratch...\n")
+    loaded_existing_model = False
+
 # BUILD THE MODEL 
-model = tf.keras.Sequential([
-    Input(shape=(32,32,3)),
+if not loaded_existing_model:
+    model = tf.keras.Sequential([
+        Input(shape=(32,32,3)),
 
-    data_augmentation,
+        data_augmentation,
 
-    # edges
-    Conv2D(32,(3,3),padding='same',activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
-    BatchNormalization(),
-    Conv2D(32, (3,3), padding='same', activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
-    MaxPooling2D((2,2)),
-    Dropout(0.25),
+        # edges
+        Conv2D(32,(3,3),padding='same',activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
+        BatchNormalization(),
+        Conv2D(32, (3,3), padding='same', activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
+        MaxPooling2D((2,2)),
+        Dropout(0.25),
 
-    # shapes
-    Conv2D(64, (3,3), padding='same', activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
-    BatchNormalization(),
-    Conv2D(64,(3,3),padding='same',activation='relu'),
-    MaxPooling2D((2,2)),
-    Dropout(0.3),
+        # shapes
+        Conv2D(64, (3,3), padding='same', activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
+        BatchNormalization(),
+        Conv2D(64,(3,3),padding='same',activation='relu'),
+        MaxPooling2D((2,2)),
+        Dropout(0.3),
 
-    # objects parts & full structure
-    Conv2D(128,(3,3),padding='same',activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
-    BatchNormalization(),
-    Conv2D(128,(3,3),padding='same',activation='relu'),
-    BatchNormalization(),
-    Conv2D(128,(3,3),padding='same',activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
-    MaxPooling2D((2,2)),
-    Dropout(0.35),
+        # objects parts & full structure
+        Conv2D(128,(3,3),padding='same',activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
+        BatchNormalization(),
+        Conv2D(128,(3,3),padding='same',activation='relu'),
+        BatchNormalization(),
+        Conv2D(128,(3,3),padding='same',activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
+        MaxPooling2D((2,2)),
+        Dropout(0.35),
 
-    GlobalAveragePooling2D(),
+        GlobalAveragePooling2D(),
 
-    Dense(256,activation='relu'),
-    Dropout(0.4),
+        Dense(256,activation='relu'),
+        Dropout(0.4),
 
-    Dense(len(uniq_fineClass),activation='softmax')
-])
+        Dense(len(uniq_fineClass),activation='softmax')
+    ])
 
 model.summary()
 
-model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=0.005), # dont put to high learning rate to avoid learning too quickly  
-    loss='sparse_categorical_crossentropy',
-    metrics=[tf.keras.metrics.SparseCategoricalAccuracy()]
-)
+if not loaded_existing_model:
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+        loss='sparse_categorical_crossentropy',
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()]
+    )
+# model.compile(
+#     optimizer=tf.keras.optimizers.Adam(learning_rate=0.005), # dont put to high learning rate to avoid learning too quickly  
+#     loss='sparse_categorical_crossentropy',
+#     metrics=[tf.keras.metrics.SparseCategoricalAccuracy()]
+# )
 
 class_weights = {
     0: 1.0,  # lawn-mower
@@ -184,7 +214,7 @@ metricInfo = model.fit(
     epochs=120,
     batch_size=64,
     validation_split=0.2,
-    callbacks=[lr_scheduler, early_stop],
+    # callbacks=[lr_scheduler, early_stop],
     class_weight=class_weights
 )
 
@@ -266,7 +296,14 @@ while os.path.exists(f"prediction/prediction_{j}.png"):
 plt.savefig(f"prediction/prediction_{j}.png", dpi=300)
 plt.show()
 
+# t = 1
+# while os.path.exists(f"models/model_{t}.keras"):
+#     t += 1
+# model.save(f"models/model_{t}.keras")
+
 t = 1
-while os.path.exists(f"models/model_{t}.keras"):
+while os.path.exists(f"models2/model_{t}.keras"):
     t += 1
-model.save(f"models/model_{t}.keras")
+
+model.save(f"models2/model_{t}.keras")
+print(f"\nModel saved to models2/model_{t}.keras\n")
